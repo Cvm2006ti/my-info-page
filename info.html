@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <title>معلومات الجهاز والمستخدم</title>
+  <style>
+    body { font-family: Arial, sans-serif; direction: rtl; padding: 20px;}
+    .field { margin-bottom: 8px; }
+    .label { font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h1>تفاصيل الجهاز والمستخدم</h1>
+  <div id="info"></div>
+
+  <script>
+    async function getBattery() {
+      if ('getBattery' in navigator) {
+        try {
+          const b = await navigator.getBattery();
+          return Math.round(b.level * 100) + '%';
+        } catch { return 'غير مدعوم'; }
+      }
+      return 'غير مدعوم';
+    }
+
+    async function getGeoIP() {
+      try {
+        const res = await fetch('https://ipapi.co/json/');
+        const data = await res.json();
+        return {
+          ip: data.ip || 'غير متاح',
+          country: data.country || 'غير متاح',
+          city: data.city || 'غير متاح',
+          timezone: data.timezone || 'غير متاح',
+          loc: data.latitude && data.longitude ? 
+               `${data.latitude},${data.longitude}` : ''
+        };
+      } catch {
+        return null;
+      }
+    }
+
+    async function init() {
+      const battery = await getBattery();
+      const geo = await getGeoIP();
+      const ua = navigator.userAgent;
+      const lang = navigator.language || 'غير معلوم';
+      const width = screen.width + 'x' + screen.height;
+      const hasCam = await navigator.mediaDevices?.getUserMedia({ video: true })
+                                  .then(() => 'نعم')
+                                  .catch(() => 'لا');
+      const net = navigator.connection?.effectiveType || 'غير معروف';
+      const now = new Date().toLocaleString('ar-EG', { hour12: false });
+      const incognito = 'سجلات التصفح الخاصة لا يمكن تحديدها عبر JavaScript';
+
+      const fields = {
+        'الدولة': geo?.country || 'غير متاح',
+        'المدينة': geo?.city || 'غير متاح',
+        'IP': geo?.ip || 'غير متاح',
+        'التوقيت والمنطقة الزمنية': geo?.timezone || 'غير متاح',
+        'اللغة': lang,
+        'النظام والمتصفح': ua,
+        'نوع الجهاز': /Mobi/.test(ua) ? 'جوال' : 'حاسوب',
+        'دعم الكاميرا': hasCam,
+        'دقة الشاشة': width,
+        'مستوى البطارية': battery,
+        'نوع الاتصال': net,
+        'وضع التصفح الخفي': incognito,
+        'تاريخ ووقت الدخول': now,
+        'الموقع الجغرافي': geo?.loc ? 
+          `<a href="https://www.google.com/maps?q=${geo.loc}" target="_blank">${geo.loc}</a>` 
+          : 'غير متاح'
+      };
+
+      const div = document.getElementById('info');
+      for (const k in fields) {
+        const el = document.createElement('div');
+        el.className = 'field';
+        el.innerHTML = `<span class="label">${k}:</span> ${fields[k]}`;
+        div.appendChild(el);
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>
